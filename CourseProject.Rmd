@@ -1,0 +1,68 @@
+---
+title: "CourseProject"
+output: html_document
+---
+
+# Practical Machine Learning Course Project
+
+## Loading and Preprocessing data
+
+```{r}
+library(caret)
+library(AppliedPredictiveModeling)
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+Omit all variables which are not of class "numeric" 
+```{r cache=TRUE}
+training_new <- data.frame("classe" = training[,"classe"], check.names = TRUE)
+testing_new <- data.frame("classe" = training[1:20,"classe"], check.names = TRUE)
+count <- 1
+
+for (i in 1:ncol(training))
+{
+  if (class(training[,i]) == "numeric")
+      {
+      training_new <- cbind(training_new, training[,i])
+      count <- count + 1
+      colnames(training_new)[count] <- colnames(training)[i]
+  }}
+
+count <- 1
+for (i in 1:ncol(testing))
+{
+  if (class(testing[,i]) == "numeric")
+      {
+      testing_new <- cbind(testing_new, testing[,i])
+      count <- count + 1
+      colnames(testing_new)[count] <- colnames(testing)[i]
+  }}
+training_new <- na.omit(training_new)
+testing_new <- testing_new[,-1]
+```
+
+## Find PCA components and train the model using cross-validation resampling
+
+### PCA Components
+```{r}
+PCA_set <- preProcess(training_new[,2:89], method ="pca")
+PCA_valued <- predict(PCA_set, training_new[,2:89])
+
+PCA_testing <- predict(PCA_set, testing_new[,-1])
+```
+
+### 5-fold Cross-validation and training
+Cross-validation is a technique to reduce the out-of-sample error or generalisation error. It basically works by dividing the training set itself into 5 sets each time for 5 times. Every time, 4 of the five sets act as training data and the fifth one acts as the testing data. Thus many models are created and their effective "out of sample errors" calculated. This ensures that the generalisation error to the testing data is significantly lower and thus the predictor better.
+
+```{r cache=TRUE, message=FALSE}
+fitControl <- trainControl(method = "repeatedcv", number = 5, repeats = 5, allowParallel = T)
+model <- train(PCA_valued, training_new[,1], trControl = fitControl)
+model
+```
+
+## Evaluation on testing data
+
+```{r cache=TRUE, message=FALSE}
+predict(model, PCA_testing)
+```
